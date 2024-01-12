@@ -1,0 +1,158 @@
+class Vertex:
+    #для представления вершин графа
+    ID = 1 
+    
+    def __init__(self):
+        self._links = [] #(список объектов класса Link)
+        self.ID = Vertex.ID
+        Vertex.ID += 1
+        
+    @property
+    def links(self):
+        return self._links        
+    
+                
+class Link:
+    #для описания связи между двумя произвольными вершинами графа
+    def __init__(self, v1, v2, dist=1):
+        self._v1 = v1 #вершина 1
+        self._v2 = v2 #вершина 2
+        self._dist = dist #длина связи
+   
+    @property
+    def v1(self):
+        return self._v1
+    
+    @property
+    def v2(self):
+        return self._v2
+    
+    @property
+    def dist(self):
+        return self._dist
+    
+    @dist.setter
+    def dist(self, value):
+        self._dist = value
+
+class LinkedGraph:
+    #для представления связного графа в целом (карта целиком)
+    
+    def __init__(self):
+        self._links = [] #список из объектов класса Link
+        self._vertex = [] #список из объектов класса Vertex
+    
+    #для добавления новой вершины v в список _vertex
+    def add_vertex(self, v):
+        if not v in self._vertex:
+            self._vertex.append(v)
+    
+    #для добавления новой связи link в список _links
+    def add_link(self, link):
+        for i in self._links:
+            if link.v1 in (i.v1, i.v2) and link.v2 in (i.v1, i.v2):
+                return "Cвязь существует"
+            
+        self._links.append(link)
+        self.add_vertex(link.v1)
+        self.add_vertex(link.v2)
+    
+    #для поиска кратчайшего маршрута из верш start_v в верш stop_v
+    #Метод find_path() должен возвращать список из вершин кратчайшего маршрута и список из связей этого же         маршрута в виде кортежа: ([вершины кратчайшего пути], [связи между вершинами])
+    def find_path(self, start_v, stop_v):
+        
+        #формирование матрицы смежности
+        D = [[0 for _ in range(len(self._vertex))] for _ in range(len(self._vertex))]
+        
+        for i in range(len(self._links)):
+            D[self._links[i].v1.ID-1][self._links[i].v2.ID-1] = self._links[i].dist
+            D[self._links[i].v2.ID-1][self._links[i].v1.ID-1] = self._links[i].dist
+            
+        #алгоритм Дейкстры
+        st = start_v.ID
+        sv = stop_v.ID
+
+        g = {f"v{i}": 1e8 for i in range(1, len(D)+1)} #список значений ребер минимального пути
+        g['v1'] = 0
+
+        g2 = {f"v{i}": 1e8 for i in range(1, len(D)+1)} #список значений ребер минимального пути
+        g2['v1'] = 0
+
+        stc = all([v==1e8 for k,v in g2.items()])
+        while not stc:
+            for j in range(len(D[st-1])):
+                if D[st-1][j] > 0:
+                    if g.get(f"v{st}")+D[st-1][j] < g.get(f"v{j+1}"):
+                        g[f"v{j+1}"] = g.get(f"v{st}")+D[st-1][j]
+                        g2[f"v{j+1}"] = g.get(f"v{st}")+D[st-1][j]
+    
+            g2[f"v{st}"] = 1e8  
+            st = [int(k[1]) for k,v in g2.items() if v == min(g2.values())][0]
+            stc = all([v==1e8 for k,v in g2.items()])
+            
+        #поиск кратчайшего пути
+        lst = [f"v{sv}"]
+        st = sv
+
+        while not 'v1' in lst:
+            for i in range(len(D[st-1])):
+                if D[st-1][i] > 0:
+                    if g.get(f"v{st}")-D[st-1][i] == g.get(f"v{i+1}"):
+                        lst.append(f"v{i+1}")
+                        break
+            st = i+1    
+                            
+        #связи между вершинами
+        lnks = []
+
+        for j in range(len(lst)-1):
+            for i in range(len(self._links)):
+                if f"v{self._links[i].v1.ID}" in (lst[j], lst[j+1]) and f"v{self._links[i].v2.ID}" in (lst[j], lst[j+1]):
+                    lnks.append(self._links[i])   
+
+        return ([int(i[1]) for i in reversed(lst)],lnks)
+        
+class Station(Vertex):
+    #для описания станций метро
+    def __init__(self, name):
+        super().__init__()        
+        self.name = name
+        
+    def __str__(self):
+        return self.name
+    
+    def __repr__(self):
+        return self.name
+    
+class LinkMetro(Link):
+    #для описания связей между станциями метро
+    def __init__(self, v1, v2, dist):
+        super().__init__(v1, v2, dist)
+
+#тесты
+
+map_metro = LinkedGraph()
+v1 = Station("Сретенский бульвар")
+v2 = Station("Тургеневская")
+v3 = Station("Чистые пруды")
+v4 = Station("Лубянка")
+v5 = Station("Кузнецкий мост")
+v6 = Station("Китай-город 1")
+v7 = Station("Китай-город 2")
+
+map_metro.add_link(LinkMetro(v1, v2, 1))
+map_metro.add_link(LinkMetro(v2, v3, 1))
+map_metro.add_link(LinkMetro(v1, v3, 1))
+
+map_metro.add_link(LinkMetro(v4, v5, 1))
+map_metro.add_link(LinkMetro(v6, v7, 1))
+
+map_metro.add_link(LinkMetro(v2, v7, 5))
+map_metro.add_link(LinkMetro(v3, v4, 3))
+map_metro.add_link(LinkMetro(v5, v6, 3))
+
+print(len(map_metro._links))
+print(len(map_metro._vertex))
+path = map_metro.find_path(v1, v6)  # от сретенского бульвара до китай-город 1
+print(path[0])    # [Сретенский бульвар, Тургеневская, Китай-город 2, Китай-город 1]
+print(sum([x.dist for x in path[1]]))  # 7
